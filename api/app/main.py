@@ -14,7 +14,14 @@ app = FastAPI(
     docs_url="/docs",          # Swagger UI
     redoc_url="/redoc",        # ReDoc
     )
-CORS_ORIGINS=["https://osint-guard-frontend.vercel.app/", "https://osintguard.onrender.com/", "http://localhost:3000", "http://localhost:5173"]
+CORS_ORIGINS = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173",
+    ).split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
