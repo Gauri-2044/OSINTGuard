@@ -1,7 +1,7 @@
 """
 Routes that match the frontend's expected API contract.
 
-POST /api/analyze-post  →  { rewritten_text, warnings[] }
+POST /api/analyze-post  →  { rewritten_text, warnings[], risk, contexts, entities, attacks }
 """
 
 from fastapi import APIRouter
@@ -34,6 +34,10 @@ class Warning(BaseModel):
 class AnalyzePostResponse(BaseModel):
     rewritten_text: str
     warnings: list[Warning]
+    risk: dict
+    entities: list[dict]
+    contexts: list[dict]
+    attacks: list[dict]
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -117,4 +121,8 @@ async def analyze_post(request: AnalyzePostRequest):
     return AnalyzePostResponse(
         rewritten_text=rewritten,
         warnings=warnings,
+        risk=risk,
+        entities=entities,
+        contexts=contexts,
+        attacks=attacks,
     )
