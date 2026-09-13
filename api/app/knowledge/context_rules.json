@@ -1,0 +1,199 @@
+{
+  "production_infrastructure_disclosure": {
+    "context": "Production Infrastructure Disclosure",
+    "required_entities": ["SOFTWARE", "VERSION"],
+    "keywords": [
+      "production",
+      "server",
+      "deployed",
+      "running",
+      "hosted",
+      "infrastructure"
+    ],
+    "risk_hint": "high"
+  },
+
+  "software_version_disclosure": {
+    "context": "Software Version Disclosure",
+    "required_entities": ["SOFTWARE", "VERSION"],
+    "keywords": [
+      "version",
+      "v",
+      "running",
+      "using",
+      "installed",
+      "updated",
+      "upgrade"
+    ],
+    "risk_hint": "high"
+  },
+
+  "cloud_infrastructure_disclosure": {
+    "context": "Cloud Infrastructure Disclosure",
+    "required_entities": [
+      "CLOUD_PROVIDER"
+    ],
+    "keywords": [
+      "aws",
+      "azure",
+      "gcp",
+      "cloud",
+      "region",
+      "bucket",
+      "instance"
+    ],
+    "risk_hint": "medium"
+  },
+
+  "network_information_disclosure": {
+    "context": "Network Information Disclosure",
+    "required_entities": [
+      "IP_ADDRESS"
+    ],
+    "keywords": [
+      "server",
+      "host",
+      "network",
+      "gateway",
+      "internal",
+      "port"
+    ],
+    "risk_hint": "high"
+  },
+
+  "employee_information_disclosure": {
+    "context": "Employee Information Disclosure",
+    "required_entities": [
+      "PERSON",
+      "ORG"
+    ],
+    "keywords": [
+      "employee",
+      "developer",
+      "engineer",
+      "manager",
+      "admin",
+      "team",
+      "works",
+      "working"
+    ],
+    "risk_hint": "medium"
+  },
+
+  "contact_information_disclosure": {
+    "context": "Contact Information Disclosure",
+    "required_entities": [
+      "EMAIL"
+    ],
+    "keywords": [
+      "contact",
+      "email",
+      "reach",
+      "mail",
+      "message"
+    ],
+    "risk_hint": "medium"
+  },
+
+  "travel_information_disclosure": {
+    "context": "Travel Information Disclosure",
+    "required_entities": [
+      "LOCATION"
+    ],
+    "keywords": [
+      "going",
+      "traveling",
+      "travelling",
+      "visiting",
+      "flying",
+      "leaving",
+      "arriving",
+      "tomorrow",
+      "today",
+      "next week"
+    ],
+    "risk_hint": "medium"
+  },
+
+  "project_information_disclosure": {
+    "context": "Project Information Disclosure",
+    "required_entities": [
+      "PROJECT_NAME"
+    ],
+    "keywords": [
+      "project",
+      "building",
+      "developing",
+      "working",
+      "internal",
+      "deployment"
+    ],
+    "risk_hint": "medium"
+  },
+
+  "internal_system_disclosure": {
+    "context": "Internal System Disclosure",
+    "required_entities": [
+      "INTERNAL_TOOL"
+    ],
+    "keywords": [
+      "internal",
+      "private",
+      "company",
+      "office",
+      "intranet",
+      "internal tool",
+      "internal system"
+    ],
+    "risk_hint": "high"
+  },
+
+  "credential_exposure": {
+    "context": "Credential or Secret Exposure",
+    "required_entities": [
+      "API_KEY"
+    ],
+    "keywords": [
+      "api key",
+      "token",
+      "secret",
+      "password",
+      "credential",
+      "access key"
+    ],
+    "risk_hint": "critical"
+  },
+
+  "location_information_disclosure": {
+    "context": "Location Information Disclosure",
+    "required_entities": [
+      "LOCATION"
+    ],
+    "keywords": [
+      "located",
+      "based",
+      "office",
+      "home",
+      "living",
+      "working"
+    ],
+    "risk_hint": "medium"
+  },
+
+  "date_information_disclosure": {
+    "context": "Date or Schedule Disclosure",
+    "required_entities": [
+      "DATE"
+    ],
+    "keywords": [
+      "meeting",
+      "event",
+      "travel",
+      "launch",
+      "deployment",
+      "conference",
+      "appointment"
+    ],
+    "risk_hint": "low"
+  }
+}

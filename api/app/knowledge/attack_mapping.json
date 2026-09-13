@@ -1,0 +1,125 @@
+{
+  "Production Infrastructure Disclosure": {
+    "attacks": [
+      {
+        "name": "Infrastructure Reconnaissance",
+        "source": "MITRE ATT&CK"
+      },
+      {
+        "name": "System Information Discovery",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  },
+
+  "Software Version Disclosure": {
+    "attacks": [
+      {
+        "name": "Software Fingerprinting",
+        "source": "MITRE ATT&CK"
+      },
+      {
+        "name": "Vulnerability Research",
+        "source": "NIST"
+      }
+    ]
+  },
+
+  "Cloud Infrastructure Disclosure": {
+    "attacks": [
+      {
+        "name": "Cloud Infrastructure Reconnaissance",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  },
+
+  "Network Information Disclosure": {
+    "attacks": [
+      {
+        "name": "Network Reconnaissance",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  },
+
+  "Employee Information Disclosure": {
+    "attacks": [
+      {
+        "name": "Spearphishing",
+        "source": "MITRE ATT&CK"
+      },
+      {
+        "name": "Social Engineering",
+        "source": "NIST"
+      }
+    ]
+  },
+
+  "Contact Information Disclosure": {
+    "attacks": [
+      {
+        "name": "Phishing",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  },
+
+  "Travel Information Disclosure": {
+    "attacks": [
+      {
+        "name": "Target Profiling",
+        "source": "Security Guidance"
+      }
+    ]
+  },
+
+  "Project Information Disclosure": {
+    "attacks": [
+      {
+        "name": "Target Profiling",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  },
+
+  "Internal System Disclosure": {
+    "attacks": [
+      {
+        "name": "Infrastructure Reconnaissance",
+        "source": "MITRE ATT&CK"
+      },
+      {
+        "name": "Target Profiling",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  },
+
+  "Credential or Secret Exposure": {
+    "attacks": [
+      {
+        "name": "Credential Access",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  },
+
+  "Location Information Disclosure": {
+    "attacks": [
+      {
+        "name": "Target Profiling",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  },
+
+  "Date or Schedule Disclosure": {
+    "attacks": [
+      {
+        "name": "Target Profiling",
+        "source": "MITRE ATT&CK"
+      }
+    ]
+  }
+}
