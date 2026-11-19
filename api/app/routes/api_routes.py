@@ -29,6 +29,7 @@ class AnalyzePostResponse(BaseModel):
     detectors: dict
     analysis_complete: bool
     limitations: list[str]
+    report: dict | None = None   # versioned structured report (Phase 1)
 
 @router.post("/analyze-post", response_model=AnalyzePostResponse)
 def analyze_post(request: AnalyzePostRequest):

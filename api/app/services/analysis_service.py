@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import threading
+import time
 from collections import OrderedDict
 
 from app.services.attack_mapping_service import map_attacks
@@ -54,14 +55,28 @@ def clear_masked_text_cache() -> None:
 def analyze(text: str) -> dict:
     if not isinstance(text, str):
         raise TypeError("text must be a string")
-    
+
+    timings: dict[str, float] = {}
+    t_total = time.monotonic()
+
+    # --- Detection ---
+    t0 = time.monotonic()
     candidates, detectors = detect_with_status(text)
+    timings["detection_ms"] = round((time.monotonic() - t0) * 1000, 1)
+
     # Offsets must be trustworthy before evidence is used or masking is applied.
     candidates = [dict(e, text=text[e["start"]:e["end"]]) for e in candidates
                   if isinstance(e, dict) and isinstance(e.get("label"), str)
                   and type(e.get("start")) is int and type(e.get("end")) is int
                   and 0 <= e["start"] < e["end"] <= len(text)]
+
+    # --- Normalization ---
+    t0 = time.monotonic()
     entities = [normalize_entity(e) for e in candidates]
+    timings["normalization_ms"] = round((time.monotonic() - t0) * 1000, 1)
+
+    # --- Context rules ---
+    t0 = time.monotonic()
     try:
         contexts = infer_context(entities, text)
         from app.services.context_service import nlp
@@ -72,20 +87,53 @@ def analyze(text: str) -> dict:
     except Exception:
         contexts = []
         detectors["context_rules"] = {"status": "unavailable"}
+    timings["context_ms"] = round((time.monotonic() - t0) * 1000, 1)
+
+    # --- Severity ---
+    t0 = time.monotonic()
     decision = evaluate_severity(entities, contexts)
-    # Preserve the existing RF feature names/order and pre-normalization inputs.
+    timings["severity_ms"] = round((time.monotonic() - t0) * 1000, 1)
+
+    # --- Legacy RF (keep schema unchanged) ---
     features = build_features(resolve_overlaps(candidates), contexts)
     legacy = predict_risk(features)
+
+    # --- Warnings (public contract: detected_risk, severity, hacker_tactic) ---
     warnings = [
         {key: finding[key] for key in ("detected_risk", "severity", "hacker_tactic")}
         for finding in decision["findings"]
     ]
-    # Deduplicate public cards; detailed findings retain every evidence source.
     warnings = list({tuple(item.items()): item for item in warnings}.values())
+
     risk = {key: value for key, value in decision.items() if key != "findings"}
     risk.update(source="deterministic_policy", prediction=decision["severity"])
+
+    # --- Masking ---
+    t0 = time.monotonic()
     masked_text = mask_sensitive_text(text, entities)
+    timings["masking_ms"] = round((time.monotonic() - t0) * 1000, 1)
     cache_masked_text(text, masked_text)
+
+    timings["total_ms"] = round((time.monotonic() - t_total) * 1000, 1)
+
+    analysis_complete = all(
+        s.get("status") in {"available", "degraded"}
+        for s in detectors.values()
+        if s.get("status") != "disabled"
+    )
+
+    # --- Report ---
+    from app.services.report_builder import build_report
+    report = build_report(
+        entities=entities,
+        contexts=contexts,
+        findings=decision["findings"],
+        detectors=detectors,
+        masked_text=masked_text,
+        severity=decision["severity"],
+        analysis_complete=analysis_complete,
+        timings=timings,
+    )
 
     return {
         "entities": entities, "contexts": contexts, "features": features,
@@ -93,9 +141,10 @@ def analyze(text: str) -> dict:
         "warnings": warnings, "findings": decision["findings"],
         "legacy_debug": {"random_forest": legacy},
         "detectors": detectors,
-        "analysis_complete": all(s["status"] == "available" for s in detectors.values()),
+        "analysis_complete": analysis_complete,
         "limitations": list(KNOWN_LIMITATIONS),
         "attacks": [dict(attack, interpretation="Potential association, not observed activity or probability.")
                     for attack in map_attacks(contexts)],
         "masked_text": masked_text,
+        "report": report,
     }

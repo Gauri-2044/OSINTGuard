@@ -5,14 +5,11 @@ Output format matches entity_service:
 {"text", "label", "source", "start", "end", "score"}
 """
 import logging
-import os
+import time
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-# Check current model names on Hugging Face; override with an env var.
-MODEL_NAME = os.getenv("GLINER_MODEL", "urchade/gliner_small-v2.1")
-THRESHOLD = float(os.getenv("GLINER_THRESHOLD", "0.5"))
 CHUNK_CHARS = 1000    # GLiNER has a short context window (~384 tokens)
 OVERLAP_CHARS = 150
 
@@ -34,17 +31,28 @@ LABEL_MAP = {
 @lru_cache(maxsize=1)
 def _model():
     from gliner import GLiNER
-    return GLiNER.from_pretrained(MODEL_NAME)
+    from app.settings import settings
+    kwargs: dict = {}
+    if settings.offline_mode:
+        kwargs["local_files_only"] = True
+    return GLiNER.from_pretrained(settings.gliner_model, **kwargs)
 
 
 def load_gliner() -> bool:
     """Call once at app startup (FastAPI lifespan) so the first request is fast."""
-    if os.getenv("OSINT_GLINER_ENABLED", "1").lower() in {"0", "false", "no"}:
+    from app.settings import settings
+    if not settings.gliner_enabled:
         return False
     try:
+        t0 = time.monotonic()
         _model()
+        elapsed_ms = (time.monotonic() - t0) * 1000
+        from app.settings import model_registry
+        model_registry.record_load_success("gliner", load_time_ms=elapsed_ms, revision=settings.gliner_model)
         return True
     except Exception as exc:  # never log user text here
+        from app.settings import model_registry
+        model_registry.record_load_failure("gliner", error_code=type(exc).__name__)
         logger.warning("GLiNER unavailable, continuing without it: %s", type(exc).__name__)
         return False
 
@@ -64,12 +72,14 @@ def _chunks(text: str):
 
 
 def gliner_entities(text: str) -> list[dict]:
-    if not load_gliner():
+    from app.settings import settings
+    if not settings.gliner_enabled:
         return []
     model = _model()
+    threshold = settings.gliner_threshold
     found: dict[tuple, dict] = {}
     for offset, chunk in _chunks(text):
-        for e in model.predict_entities(chunk, list(LABEL_MAP), threshold=THRESHOLD):
+        for e in model.predict_entities(chunk, list(LABEL_MAP), threshold=threshold):
             label = LABEL_MAP.get(e["label"])
             if not label:
                 continue
@@ -89,14 +99,34 @@ def gliner_entities(text: str) -> list[dict]:
     return list(found.values())
 
 
-def detect_with_status(text):
-    if os.getenv("OSINT_GLINER_ENABLED", "1").lower() in {"0", "false", "no"}:
+def detect_with_status(text: str) -> tuple[list[dict], dict]:
+    from app.settings import settings
+    if not settings.gliner_enabled:
         return [], {"status": "disabled"}
     if not text.strip():
         return [], {"status": "not_run", "reason": "empty_input"}
-    if not load_gliner():
-        return [], {"status": "unavailable"}
+
+    t0 = time.monotonic()
+    loaded = load_gliner()
+    if not loaded:
+        return [], {
+            "status": "unavailable",
+            "error_code": "load_failed",
+            "latency_ms": round((time.monotonic() - t0) * 1000, 1),
+            "model": settings.gliner_model,
+        }
     try:
-        return gliner_entities(text), {"status": "available"}
-    except Exception:
-        return [], {"status": "unavailable"}
+        result = gliner_entities(text)
+        return result, {
+            "status": "available",
+            "latency_ms": round((time.monotonic() - t0) * 1000, 1),
+            "model": settings.gliner_model,
+            "threshold": settings.gliner_threshold,
+        }
+    except Exception as exc:
+        return [], {
+            "status": "unavailable",
+            "error_code": type(exc).__name__,
+            "latency_ms": round((time.monotonic() - t0) * 1000, 1),
+            "model": settings.gliner_model,
+        }
