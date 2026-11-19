@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from app.routes.analyze import router as analyze_router
@@ -7,7 +8,19 @@ from app.routes.rewrite import router as rewrite_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.services.risk_service import _load_model
+from app.services.gliner_service import load_gliner
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # spaCy is shared and loaded on import; initialize risk before accepting requests.
+    _load_model()
+    load_gliner()          # loads the model once, before the first request
+    yield                  # app runs here
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="OSINTGuard API",
     description="OSINTGuard API for detecting OSINT exposure before publishing.",
     version="1.0.0",

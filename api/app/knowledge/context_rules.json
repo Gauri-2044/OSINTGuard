@@ -134,7 +134,7 @@
   "internal_system_disclosure": {
     "context": "Internal System Disclosure",
     "required_entities": [
-      "INTERNAL_TOOL"
+      "SOFTWARE", "HOSTNAME"
     ],
     "keywords": [
       "internal",

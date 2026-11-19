@@ -8,8 +8,8 @@ This guide explains how to run OSINTGuard locally for development.
 
 Make sure you have the following installed:
 
-- Python 3.10+
-- Node.js 18+
+- Python 3.14.6 (tested development environment)
+- Node.js 22.12+ (or a newer release supported by the installed Vite version)
 - Git
 - npm
 
@@ -24,7 +24,7 @@ cd OSINTGuard
 
 #### Backend Setup
 2. Go to the Backend
-cd backend
+cd api
 3. Create a Virtual Environment
 Windows
 python -m venv venv
@@ -41,7 +41,7 @@ OSINTGuard uses spaCy for entity extraction.
 python -m spacy download en_core_web_sm
 6. Configure Environment Variables
 
-Create a .env file in the backend directory.
+Create a .env file in the api directory.
 
 GEMINI_API_KEY=your_gemini_api_key
 
@@ -51,9 +51,9 @@ Use .env.example as a reference.
 
 7. Start the Backend
 
-From the backend directory:
+From the `api` directory:
 ```bash
-uvicorn main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 The API will be available at: http://127.0.0.1:8000
 
@@ -79,3 +79,10 @@ http://localhost:5173
 Running OSINTGuard
 
 Open the frontend in your browser and enter the content you want to analyze.
+## Reproducibility
+
+Direct backend dependencies are pinned in `api/requirements.txt`. The complete development environment is captured in `api/requirements-lock.txt`; use it on the recorded platform, or resolve platform-specific wheels when deploying elsewhere. Use `npm ci` in the frontend directory to reproduce its lockfile.
+
+## Verification
+
+From the repository root, run `python -m pytest tests -q`. In the frontend directory run `npm run build`. Model downloads and optional provider access are separate from deterministic regression tests.

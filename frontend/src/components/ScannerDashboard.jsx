@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   Shield, ArrowLeft, Search, Copy, Check, AlertTriangle,
-  CheckCircle, Loader2, Zap, Terminal, Info, ChevronDown, X, Sparkles, Sliders
+  CheckCircle, Loader2, Zap, Terminal, Info, X, ChevronDown
 } from 'lucide-react';
 
 const SeverityBadge = ({ severity }) => {
@@ -42,35 +42,43 @@ const RiskCard = ({ risk }) => (
 
 const EXAMPLE_TEXTS = [
   "Hey LinkedIn! Excited to share that I just wrapped up our Q3 product review for Project Helios at TechCorp. We're running it on AWS us-east-2 with our internal tool Nexus v2.3. Heading to the NYC office on Thursday for the big launch meeting!",
-  "Just fixed a nasty bug in prod at work. Our main API runs on Python 3.9 on an Ubuntu 22.04 server. The issue was in the /api/v2/users endpoint. Working remotely from San Francisco today ☕",
+  "Just fixed a nasty bug in prod at work. Our main API runs on Python 3.9 on an Ubuntu 22.04 server. The issue was in the /api/v2/users endpoint. Working remotely from San Francisco today â˜•",
   "My name is John. My Windows 11 22H2 laptop is acting weird when I connect to my office VPN at 192.168.1.0/24. Anyone else using Cisco AnyConnect 4.10 having issues?"
 ];
 
-const CONTENT_TYPES = [
-  'General',
-  'Technical',
-  'Professional',
-  'Personal',
-  'Project / Development'
-];
 
 export default function ScannerDashboard({ onBack }) {
   const [inputText, setInputText] = useState('');
-  const [contentType, setContentType] = useState('General');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [rewriteError, setRewriteError] = useState(null);
+  const [analyzedText, setAnalyzedText] = useState('');
+  const requestVersion = useRef(0);
+
+  const invalidateResults = () => {
+    requestVersion.current += 1;
+    setResult(null);
+    setAnalyzedText('');
+    setIsLoading(false);
+    setIsRewriting(false);
+    setRewriteError(null);
+    setCopied(false);
+  };
   const [charCount, setCharCount] = useState(0);
   const textareaRef = useRef(null);
 
   const handleTextChange = (e) => {
+    invalidateResults();
     setInputText(e.target.value);
     setCharCount(e.target.value.length);
     if (error) setError(null);
   };
 
   const loadExample = (text) => {
+    invalidateResults();
     setInputText(text);
     setCharCount(text.length);
     setResult(null);
@@ -78,8 +86,12 @@ export default function ScannerDashboard({ onBack }) {
     textareaRef.current?.focus();
   };
 
+  //API CALL FUNCTION
   const handleAnalyze = async () => {
     if (!inputText.trim()) return;
+    invalidateResults();
+    const version = requestVersion.current;
+    const submittedText = inputText;
     setIsLoading(true);
     setResult(null);
     setError(null);
@@ -90,7 +102,7 @@ export default function ScannerDashboard({ onBack }) {
       const response = await fetch(`${apiBaseUrl}/api/analyze-post`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: inputText, content_type: contentType }),
+        body: JSON.stringify({ text: inputText }),
       });
 
       if (!response.ok) {
@@ -98,11 +110,38 @@ export default function ScannerDashboard({ onBack }) {
       }
 
       const data = await response.json();
+      if (version !== requestVersion.current) return;
+      setAnalyzedText(submittedText);
       setResult(data);
     } catch (err) {
-      setError(err.message || 'Failed to connect to the analysis server. Make sure Python Flask server is running (python app.py).');
+      if (version !== requestVersion.current) return;
+      setError(err.message || 'Failed to connect to the analysis server. Make sure the FastAPI server is running (python -m uvicorn app.main:app --reload from the api directory).');
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
+    }
+  };
+
+  const handleRewrite = async () => {
+    if (!result || !analyzedText || isRewriting) return;
+    const version = requestVersion.current;
+    setIsRewriting(true);
+    setRewriteError(null);
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiBaseUrl}/api/rewrite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: analyzedText }),
+      });
+      if (!response.ok) throw new Error('Rewrite is unavailable. Your analysis is still shown below.');
+      const data = await response.json();
+      if (version !== requestVersion.current) return;
+      setResult(current => ({ ...current, rewritten_text: data.rewritten_text }));
+      setCopied(false);
+    } catch (err) {
+      if (version === requestVersion.current) setRewriteError(err.message);
+    } finally {
+      if (version === requestVersion.current) setIsRewriting(false);
     }
   };
 
@@ -123,7 +162,7 @@ export default function ScannerDashboard({ onBack }) {
       <div className="absolute top-0 right-1/4 w-[600px] h-[300px] bg-indigo-900/15 blur-[140px] pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-[600px] h-[300px] bg-cyan-900/15 blur-[140px] pointer-events-none" />
 
-      {/* ── Top Bar (Nexus AI Floating Header) ── */}
+      {/* â”€â”€ Top Bar (Nexus AI Floating Header) â”€â”€ */}
       <header className="sticky top-0 z-40 border-b border-white/10 backdrop-blur-xl bg-[#090d16]/85 px-4 sm:px-8 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
@@ -172,11 +211,11 @@ export default function ScannerDashboard({ onBack }) {
         </div>
       </header>
 
-      {/* ── Main Dashboard Content ── */}
+      {/* â”€â”€ Main Dashboard Content â”€â”€ */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
 
-          {/* ── LEFT PANEL (Input Draft Widget) ── */}
+          {/* â”€â”€ LEFT PANEL (Input Draft Widget) â”€â”€ */}
           <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white/10 flex flex-col gap-5 shadow-2xl relative">
             
             {/* Header */}
@@ -206,7 +245,7 @@ export default function ScannerDashboard({ onBack }) {
                       onClick={() => loadExample(t)}
                       className="w-full text-left text-xs text-slate-300 hover:text-white rounded-xl p-3 transition-colors line-clamp-2 hover:bg-white/10 font-normal"
                     >
-                      {t.slice(0, 95)}…
+                      {t.slice(0, 95)}â€¦
                     </button>
                   ))}
                 </div>
@@ -224,35 +263,6 @@ export default function ScannerDashboard({ onBack }) {
               />
               <div className="absolute bottom-4 right-4 text-[11px] font-mono text-slate-500 px-2.5 py-1 rounded-full bg-slate-900/80 border border-white/5">
                 {charCount} chars
-              </div>
-            </div>
-
-            {/* Content Type Selector */}
-            <div className="flex flex-col gap-2.5 p-4 rounded-2xl border border-white/10 bg-slate-950/50 backdrop-blur-md shadow-inner">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="text-xs font-mono text-slate-300 font-bold uppercase tracking-wider">Content Type</span>
-                </div>
-                <span className="text-[11px] font-mono text-cyan-300 font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
-                  {contentType}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-0.5">
-                {CONTENT_TYPES.map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setContentType(type)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
-                      contentType === type
-                        ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 text-white shadow-[0_0_15px_rgba(56,189,248,0.35)] border border-cyan-400/50 scale-[1.02]'
-                        : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 border border-white/10'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -280,7 +290,7 @@ export default function ScannerDashboard({ onBack }) {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Scanning Threat Vectors…</span>
+                  <span>Scanning Threat Vectorsâ€¦</span>
                 </>
               ) : (
                 <>
@@ -300,7 +310,7 @@ export default function ScannerDashboard({ onBack }) {
 
           </div>
 
-          {/* ── RIGHT PANEL (Analysis Output Widget) ── */}
+          {/* â”€â”€ RIGHT PANEL (Analysis Output Widget) â”€â”€ */}
           <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white/10 flex flex-col gap-5 shadow-2xl relative">
 
             {/* Empty State */}
@@ -312,7 +322,7 @@ export default function ScannerDashboard({ onBack }) {
                   </div>
                 </div>
                 <h3 className="text-white font-bold text-base mb-1">Awaiting Draft Input</h3>
-                <p className="text-slate-400 text-xs max-w-xs leading-relaxed">Paste your text on the left and click Analyze. Results, sanitized rewrite, and risk severity breakdown will render here.</p>
+                <p className="text-slate-400 text-xs max-w-xs leading-relaxed">Paste your text on the left and click Analyze. Review the findings here, then optionally request a rewrite.</p>
               </div>
             )}
 
@@ -324,8 +334,8 @@ export default function ScannerDashboard({ onBack }) {
                     <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
                   </div>
                 </div>
-                <p className="text-white font-mono text-xs font-bold tracking-wider">RUNNING DEEP OSINT ANALYSIS…</p>
-                <p className="text-slate-400 text-xs mt-1 font-medium">Cross-referencing 47 threat vectors</p>
+                <p className="text-white font-mono text-xs font-bold tracking-wider">RUNNING DEEP OSINT ANALYSISâ€¦</p>
+                <p className="text-slate-400 text-xs mt-1 font-medium">Checking entities and disclosure contexts</p>
               </div>
             )}
 
@@ -338,9 +348,20 @@ export default function ScannerDashboard({ onBack }) {
                     <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
                       <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                     </div>
-                    <h2 className="text-xs font-bold text-white font-mono tracking-wider uppercase">SAFE TO PUBLISH VERSION</h2>
+                    <h2 className="text-xs font-bold text-white font-mono tracking-wider uppercase">OPTIONAL REWRITE</h2>
                   </div>
-                  <div className="relative rounded-2xl p-5 border border-white/15 bg-slate-950/80 shadow-inner">
+                  <p className="text-slate-400 text-xs mb-3">
+                    Generate a draft with Gemini using masked text. Remaining context is sent too; review the result before publishing.
+                  </p>
+                  <button
+                    onClick={handleRewrite}
+                    disabled={isRewriting}
+                    className="px-4 py-2 mb-3 rounded-full border border-cyan-400/40 text-cyan-200 disabled:opacity-50"
+                  >
+                    {isRewriting ? 'Generating…' : result.rewritten_text ? 'Regenerate rewrite' : 'Generate rewrite'}
+                  </button>
+                  {rewriteError && <p role="alert" className="text-rose-300 text-sm mb-3">{rewriteError}</p>}
+                  {result.rewritten_text && <div className="relative rounded-2xl p-5 border border-white/15 bg-slate-950/80 shadow-inner">
                     <p className="text-slate-100 text-sm leading-relaxed pr-12 font-normal">
                       {result.rewritten_text}
                     </p>
@@ -357,7 +378,7 @@ export default function ScannerDashboard({ onBack }) {
                     {copied && (
                       <span className="absolute top-5 right-15 text-xs text-emerald-400 font-mono font-bold">Copied!</span>
                     )}
-                  </div>
+                  </div>}
                 </div>
 
                 {/* Risks Breakdown */}
@@ -374,11 +395,19 @@ export default function ScannerDashboard({ onBack }) {
                     </span>
                   </div>
 
+                  {result.analysis_complete === false && (
+                    <p role="status" className="text-amber-300 text-xs mb-3">
+                      Analysis is incomplete. Detector status: {Object.entries(result.detectors ?? {})
+                        .filter(([, info]) => info.status !== 'available')
+                        .map(([name, info]) => `${name}: ${info.status}`)
+                        .join(', ')}.
+                    </p>
+                  )}
                   {result.warnings?.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 border border-dashed border-white/10 rounded-2xl bg-slate-950/40">
                       <CheckCircle className="w-8 h-8 text-emerald-400 mb-2" />
-                      <p className="text-white font-bold text-sm">No risks detected!</p>
-                      <p className="text-slate-400 text-xs mt-0.5">Your draft appears completely safe to publish.</p>
+                      <p className="text-white font-bold text-sm">No supported exposure detected</p>
+                      <p className="text-slate-400 text-xs mt-0.5">No supported exposure detected. This does not guarantee safety.</p>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto scrollbar-thin pr-1">
@@ -389,9 +418,40 @@ export default function ScannerDashboard({ onBack }) {
                   )}
                 </div>
 
+                <section aria-label="Detected entities and provenance" className="rounded-2xl border border-white/10 p-4">
+                  <h3 className="text-sm font-semibold text-white mb-3">Detected entities and evidence</h3>
+                  <p className="text-xs text-slate-400 mb-3">Review the matched text, its type and the detector that found it.</p>
+                  <div className="max-h-72 overflow-auto space-y-2">
+                    {(result.entities ?? []).map((entity, index) => (
+                      <div key={`${entity.start}-${entity.end}-${entity.source}-${index}`} className="rounded-lg bg-slate-950/60 p-3 text-xs">
+                        <p className="text-slate-100 break-all">{entity.text}</p>
+                        <p className="text-cyan-200 mt-1">{entity.label} · {entity.source ?? 'Unknown detector'}</p>
+                        <p className="text-slate-400">Characters {entity.start}–{entity.end}
+                          {Number.isFinite(entity.score) ? ` · Detector score: ${entity.score.toFixed(3)}` : ''}
+                          {entity.validation ? ` · Validation: ${entity.validation}` : ''}
+                        </p>
+                      </div>
+                    ))}
+                    {!result.entities?.length && <p className="text-slate-400 text-xs">No entity matches returned.</p>}
+                  </div>
+                  <h3 className="text-sm font-semibold text-white mt-4 mb-2">Masked draft</h3>
+                  <p className="text-sm text-slate-200 whitespace-pre-wrap break-words">{result.masked_text}</p>
+                  {(result.findings ?? []).map((finding, index) => (
+                    <details key={index} className="mt-3 text-xs text-slate-300">
+                      <summary className="cursor-pointer">Why: {finding.detected_risk}</summary>
+                      <p className="mt-2">{finding.rationale}</p>
+                      <ul className="list-disc ml-4 mt-2">
+                        {(finding.evidence ?? []).map((evidence, i) => (
+                          <li key={i}>{evidence.label} · {evidence.source ?? 'Unknown detector'} · characters {evidence.start}–{evidence.end}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  ))}
+                </section>
+
                 {/* Scan another post button */}
                 <button
-                  onClick={() => { setResult(null); setInputText(''); setCharCount(0); }}
+                  onClick={() => { invalidateResults(); setInputText(''); setCharCount(0); }}
                   className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-xs font-semibold text-slate-300 hover:text-white transition-all border border-white/10 bg-white/5 hover:bg-white/10 mt-2"
                 >
                   <Search className="w-3.5 h-3.5" />

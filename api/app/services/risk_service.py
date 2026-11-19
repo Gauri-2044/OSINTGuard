@@ -1,46 +1,42 @@
+"""Legacy Random Forest baseline only; never user-facing severity."""
 from pathlib import Path
-
 from app.services.build_features import FEATURE_NAMES
 
 MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "risk_model.pkl"
 _model = None
-
+_model_loaded = False
 
 def _load_model():
-    global _model
-    if _model is None and MODEL_PATH.exists():
-        import joblib
-
-        _model = joblib.load(MODEL_PATH)
+    global _model, _model_loaded
+    if not _model_loaded:
+        try:
+            if MODEL_PATH.exists():
+                import joblib
+                _model = joblib.load(MODEL_PATH)
+        except Exception:
+            # Exceptions may contain data; never log their payloads.
+            _model = None
+        _model_loaded = True
     return _model
 
-
-def _fallback_risk(contexts):
-    rank = {"safe": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
-    hints = [context.get("risk_hint", "safe").lower() for context in contexts]
-    prediction = max(hints, key=lambda hint: rank.get(hint, 0), default="safe")
-    return {
-        "prediction": prediction.title(),
-        "probabilities": {prediction.title(): 100.0},
-        "source": "context_rules",
-    }
-
-
 def predict_risk(features, contexts=None):
+    result = {
+        "source": "legacy_random_forest", "debug_only": True,
+        "note": "Legacy baseline only; not severity or attack probability.",
+        "status": "unavailable", "prediction": None, "probabilities": {},
+    }
     model = _load_model()
     if model is None:
-        return _fallback_risk(contexts or [])
-
-    values = [features[name] for name in FEATURE_NAMES]
-    probabilities = model.predict_proba([values])[0]
-    classes = model.classes_
-    result = {
-        label: round(float(probability) * 100, 2)
-        for label, probability in zip(classes, probabilities)
-    }
-    prediction = classes[probabilities.argmax()]
-    return {
-        "prediction": prediction,
-        "probabilities": result,
-        "source": "trained_model",
-    }
+        return result
+    try:
+        values = [features[name] for name in FEATURE_NAMES]
+        probabilities = model.predict_proba([values])[0]
+        result.update(
+            status="available",
+            prediction=str(model.classes_[probabilities.argmax()]),
+            probabilities={str(label): round(float(p) * 100, 2)
+                           for label, p in zip(model.classes_, probabilities)},
+        )
+    except Exception:
+        pass
+    return result
