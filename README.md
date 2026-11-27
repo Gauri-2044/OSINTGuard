@@ -1,7 +1,7 @@
 # 🛡️ OSINTGuard
 
 <p align="center">
-  <img src="./docs/assets/osintguard-logo.png" alt="OSINTGuard Logo" width="180"/>
+  <img src="./docs/osintguard-logo.png" alt="OSINTGuard Logo" width="180"/>
 </p>
 
 <p align="center">
